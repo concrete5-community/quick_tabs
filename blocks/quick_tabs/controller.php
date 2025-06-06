@@ -3,8 +3,9 @@
 namespace Concrete\Package\QuickTabs\Block\QuickTabs;
 
 use Concrete\Core\Block\BlockController;
+use Concrete\Core\Error\UserMessageException;
+use Concrete\Core\Form\Service\Form;
 use Concrete\Core\Page\Page;
-use Exception;
 
 defined('C5_EXECUTE') or die('Access Denied.');
 
@@ -20,21 +21,53 @@ class Controller extends BlockController
      */
     const OPENCLOSE_CLOSE = 'close';
 
-    public $openclose;
-
-    public $tabTitle;
-
-    public $semantic;
-
-    public $tabHandle;
-
+    /**
+     * {@inheritdoc}
+     *
+     * @see \Concrete\Core\Block\BlockController::$btTable
+     */
     protected $btTable = 'btQuickTabs';
 
-    protected $btWrapperClass = 'ccm-ui';
+    /**
+     * {@inheritdoc}
+     *
+     * @see \Concrete\Core\Block\BlockController::$btInterfaceWidth
+     */
+    protected $btInterfaceWidth = 400;
 
+    /**
+     * {@inheritdoc}
+     *
+     * @see \Concrete\Core\Block\BlockController::$btInterfaceHeight
+     */
     protected $btInterfaceHeight = 365;
 
-    protected $btInterfaceWidth = 400;
+    /**
+     * {@inheritdoc}
+     *
+     * @see \Concrete\Core\Block\BlockController::$helpers
+     */
+    protected $helpers = [];
+
+    /**
+     * @var string|null
+     */
+    protected $openclose;
+
+    /**
+     * @var string|null
+     */
+    protected $tabTitle;
+
+    /**
+     * @var string|null
+     */
+    protected $semantic;
+
+    /**
+     * @var string|null
+     */
+    protected $tabHandle;
 
     /**
      * {@inheritdoc}
@@ -67,20 +100,15 @@ class Controller extends BlockController
 
         return $c && !$c->isError() && $c->isEditMode() ? false : true;
     }
-    
-    /**
-     * {@inheritdoc}
-     *
-     * @see \Concrete\Core\Block\BlockController::registerViewAssets()
-     */
-    public function registerViewAssets($outputContent = '')
-    {
-        $this->requireAsset('javascript', 'jquery');
-    }
 
     public function view()
     {
-        $this->set('closeOption', static::OPENCLOSE_CLOSE);
+        $page = Page::getCurrentPage();
+        if (!$page || $page->isError()) {
+            $page = null;
+        }
+        $this->set('page', $page);
+        $this->set('isEditMode', $page !== null && $page->isEditMode());
     }
 
     public function add()
@@ -88,7 +116,7 @@ class Controller extends BlockController
         $this->set('openclose', '');
         $this->set('tabTitle', '');
         $this->set('semantic', '');
-        $this->set('opencloseOptions', array('' => '') + $this->getOpencloseOptions());
+        $this->set('opencloseOptions', ['' => ''] + $this->getOpencloseOptions());
         $this->set('tabHandle', '');
         $this->addOrEdit();
     }
@@ -102,6 +130,25 @@ class Controller extends BlockController
         }
         $this->set('opencloseOptions', $this->getOpencloseOptions());
         $this->addOrEdit();
+    }
+
+    /**
+     * @param \Concrete\Core\Page\Page|null $page
+     * @param \Concrete\Core\Area\Area|null $area
+     *
+     * @return \Concrete\Core\Page\Theme\GridFramework\GridFramework|null
+     */
+    public function getAreaGridFramework($page, $area)
+    {
+        if (!$page || $page->isError() || !$area || $area->isError() || !$area->isGridContainerEnabled()) {
+            return null;
+        }
+        $theme = $page->getCollectionThemeObject();
+        if (!$theme || !$theme->supportsGridFramework()) {
+            return null;
+        }
+
+        return $theme->getThemeGridFrameworkObject() ?: null;
     }
 
     /**
@@ -125,17 +172,15 @@ class Controller extends BlockController
     {
         $result = $this->normalizeArgs($args);
         if (!is_array($result)) {
-            throw new Exception(implode("\n", $result->getList()));
+            throw new UserMessageException(implode("\n", $result->getList()));
         }
         parent::save($result);
     }
 
-    protected function addOrEdit()
+    private function addOrEdit()
     {
-        $app = isset($this->app) ? $this->app : \Core::make('app');
-        $json = $app->make('helper/json');
+        $this->set('form', $this->app->make(Form::class));
         $this->set('semanticOptions', $this->getSemanticOptions());
-        $this->set('closeOptionJSON', $json->encode(static::OPENCLOSE_CLOSE));
     }
 
     /**
@@ -143,20 +188,21 @@ class Controller extends BlockController
      *
      * @return array|object error object in case of errors
      */
-    protected function normalizeArgs($args)
+    private function normalizeArgs($args)
     {
-        if (!is_array($args)) {
-            $args = array();
-        }
-        $args += array(
+        $args = (is_array($args) ? $args : []) + [
             'openclose' => '',
             'tabTitle' => '',
             'semantic' => '',
             'tabHandle' => '',
-        );
-        $app = isset($this->app) ? $this->app : \Core::make('app');
-        $errors = $app->make('helper/validation/error');
-        $result = array('openclose' => $args['openclose']);
+        ];
+        $errors = $this->app->make('helper/validation/error');
+        $result = [
+            'openclose' => (string) $args['openclose'],
+            'tabTitle' => '',
+            'semantic' => '',
+            'tabHandle' => '',
+        ];
         $opencloseOptions = $this->getOpencloseOptions();
         if ($result['openclose'] === '' || !isset($opencloseOptions[$result['openclose']])) {
             $errors->add(t('Is this the Opening or Closing Block?'));
@@ -190,12 +236,12 @@ class Controller extends BlockController
      *
      * @return array
      */
-    protected function getOpencloseOptions()
+    private function getOpencloseOptions()
     {
-        return array(
+        return [
             static::OPENCLOSE_OPEN => t('Open'),
             static::OPENCLOSE_CLOSE => t('Close'),
-        );
+        ];
     }
 
     /**
@@ -203,21 +249,20 @@ class Controller extends BlockController
      *
      * @return array
      */
-    protected function getSemanticOptions()
+    private function getSemanticOptions()
     {
-        $app = isset($this->app) ? $this->app : \Core::make('app');
-        $config = $app->make('config');
+        $config = $this->app->make('config');
         $tags = preg_split('/\W+/', (string) $config->get('quick_tabs::options.custom_tags'), -1, PREG_SPLIT_NO_EMPTY);
-        if ($tags !== array()) {
+        if ($tags !== []) {
             return array_combine($tags, $tags);
         }
 
-        return array(
+        return [
             'h2' => h('Title 2'),
             'h3' => h('Title 3'),
             'h4' => h('Title 4'),
             'p' => t('Paragraph'),
             'span' => tc('HTML Element', 'Span'),
-        );
+        ];
     }
 }

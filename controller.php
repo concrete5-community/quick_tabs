@@ -1,48 +1,63 @@
-<?php 
+<?php
 
 namespace Concrete\Package\QuickTabs;
 
-use Concrete\Core\Block\BlockType\BlockType;
 use Concrete\Core\Package\Package;
 
-defined('C5_EXECUTE') or die(_('Access Denied.'));
+defined('C5_EXECUTE') or die('Access Denied.');
 
 class Controller extends Package
 {
-	protected $pkgHandle = 'quick_tabs';
+    protected $pkgHandle = 'quick_tabs';
 
-	protected $appVersionRequired = '5.7.1';
+    /**
+     * {@inheritdoc}
+     *
+     * @see \Concrete\Core\Package\Package::$appVersionRequired
+     */
+    protected $appVersionRequired = '8.5.2';
 
-	protected $pkgVersion = '1.1.0';
+    protected $pkgVersion = '1.1.0';
 
-	/**
-	 * {@inheritdoc}
-	 *
-	 * @see \Concrete\Core\Package\Package::getPackageName()
-	 */
-	public function getPackageName()
-	{
-		return t('Quick Tabs');
-	}
+    /**
+     * {@inheritdoc}
+     *
+     * @see \Concrete\Core\Package\Package::getPackageName()
+     */
+    public function getPackageName()
+    {
+        return t('Quick Tabs');
+    }
 
-	/**
-	 * {@inheritdoc}
-	 *
-	 * @see \Concrete\Core\Package\Package::getPackageDescription()
-	 */
-	public function getPackageDescription()
-	{
-	    return t('Add Tabs to your site');
-	}
+    /**
+     * {@inheritdoc}
+     *
+     * @see \Concrete\Core\Package\Package::getPackageDescription()
+     */
+    public function getPackageDescription()
+    {
+        return t('Add Tabs to your site');
+    }
 
-	/**
-	 * {@inheritdoc}
-	 *
-	 * @see \Concrete\Core\Package\Package::install()
-	 */
-	public function install()
-	{
-		$pkg = parent::install();
-		BlockType::installBlockType('quick_tabs', $pkg);
-	}
+    /**
+     * {@inheritdoc}
+     *
+     * @see \Concrete\Core\Package\Package::install()
+     */
+    public function install()
+    {
+        parent::install();
+        $this->installContentFile('config/install.xml');
+    }
+
+    /**
+     * {@inheritdoc}
+     *
+     * @see \Concrete\Core\Package\Package::upgrade()
+     */
+    public function upgrade()
+    {
+        parent::install();
+        $this->installContentFile('config/install.xml');
+    }
 }
