@@ -9,13 +9,13 @@
             <unsigned />
             <key />
         </field>
-        <field name="openclose" type="text">
+        <field name="openclose" type="string" size="10">
             <notnull />
         </field>
         <field name="tabTitle" type="text">
             <notnull />
         </field>
-        <field name="semantic" type="text">
+        <field name="semantic" type="string" size="10">
             <notnull />
         </field>
         <field name="tabHandle" type="string" size="255">

@@ -2,6 +2,7 @@
 
 namespace Concrete\Package\QuickTabs;
 
+use Concrete\Core\Database\Connection\Connection;
 use Concrete\Core\Package\Package;
 
 defined('C5_EXECUTE') or die('Access Denied.');
@@ -57,6 +58,19 @@ class Controller extends Package
      */
     public function upgrade()
     {
+        $cn = $this->app->make(Connection::class);
+        foreach ([
+            'openclose',
+            'tabTitle',
+            'semantic',
+            'tabHandle',
+        ] as $field) {
+            try {
+                $cn->executeUpdate("UPDATE btQuickTabs SET {$field} = '' WHERE {$field} IS NULL");
+            } catch (\Exception $_) {
+            } catch (\Throwable $_) {
+            }
+        }
         parent::upgrade();
         $this->installContentFile('config/install.xml');
     }
