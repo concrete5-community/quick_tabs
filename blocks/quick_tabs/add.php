@@ -1,9 +1,9 @@
-<?php 
+<?php
 
 /**
- * @var Concrete\Core\Block\View\BlockView $this
+ * @var Concrete\Core\Block\View\BlockView $view
  */
 
 defined('C5_EXECUTE') or die('Access Denied.');
 
-$this->inc('form.php');
+$view->inc('form.php');

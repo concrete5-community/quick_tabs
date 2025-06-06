@@ -1,0 +1,14 @@
+<?xml version="1.0"?>
+<concrete5-cif version="1.0">
+
+    <blocktypes>
+        <blocktype handle="quick_tabs" package="quick_tabs" />
+    </blocktypes>
+
+    <blocktypesets>
+        <blocktypeset handle="navigation" name="Navigation" package="quick_tabs">
+            <blocktype handle="quick_tabs" />
+        </blocktypeset>
+    </blocktypesets>
+
+</concrete5-cif>

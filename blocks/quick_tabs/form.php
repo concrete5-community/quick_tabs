@@ -2,12 +2,13 @@
 /**
  * @var Concrete\Package\QuickTabs\Block\QuickTabs\Controller $controller
  * @var Concrete\Core\Form\Service\Form $form
- * @var string $openclose
+ *
  * @var array $opencloseOptions
- * @var string $semantic
  * @var array $semanticOptions
+ *
+ * @var string $openclose
  * @var string $tabTitle
- * @var string $closeOptionJSON
+ * @var string $semantic
  * @var string $tabHandle
  */
 
@@ -15,30 +16,32 @@ defined('C5_EXECUTE') or die('Access Denied.');
 
 ?>
 <div class="form-group">
-    <?php echo $form->label('openclose', t('Is this the Opening or Closing Block?')); ?>
-    <?php echo $form->select('openclose', $opencloseOptions, $openclose, array('required' => 'required')); ?>
+    <?= $form->label('openclose', t('Is this the Opening or Closing Block?')) ?>
+    <?= $form->select('openclose', $opencloseOptions, $openclose, ['required' => 'required']) ?>
 </div>
 
-<div class="form-group<?php echo $openclose === 'close' ? ' hide' : '' ?>">
-    <?php echo $form->label('tabTitle', t('Tab Title')); ?>
-    <?php echo $form->text('tabTitle', $tabTitle); ?>
+<div class="form-group<?= $openclose === $controller::OPENCLOSE_OPEN ? '' : ' hide d-none' ?>">
+    <?= $form->label('tabTitle', t('Tab Title')) ?>
+    <?= $form->text('tabTitle', $tabTitle) ?>
 </div>
 
-<div class="form-group<?php echo $openclose === 'close' ? ' hide' : '' ?>">
-    <?php echo $form->label('semantic', t('Semantic Tag for the Tab Title')); ?>
-    <?php echo $form->select('semantic', $semanticOptions, $semantic); ?>
+<div class="form-group<?= $openclose === $controller::OPENCLOSE_OPEN ? '' : ' hide d-none' ?>">
+    <?= $form->label('semantic', t('Semantic Tag for the Tab Title')) ?>
+    <?= $form->select('semantic', $semanticOptions, $semantic) ?>
 </div>
 
-<div class="form-group<?php echo $openclose === 'close' ? ' hide' : '' ?>">
-    <?php echo $form->label('tabHandle', t('Tab Handle')); ?>
-    <?php echo $form->text('tabHandle', $tabHandle, array('maxlength' => 255)); ?>
+<div class="form-group<?= $openclose === $controller::OPENCLOSE_OPEN ? '' : ' hide d-none' ?>">
+    <?= $form->label('tabHandle', t('Tab Handle')) ?>
+    <?= $form->text('tabHandle', $tabHandle, ['maxlength' => 255]) ?>
 </div>
 
 <script>
 $(document).ready(function() {
     $('#openclose')
         .on('change', function() {
-            $('#tabTitle,#semantic,#tabHandle').closest('.form-group').toggleClass('hide', this.value === <?php echo $closeOptionJSON ?>);
+            var $groups = $('#tabTitle,#semantic,#tabHandle').closest('.form-group');
+            $groups.toggleClass('hide', this.value !== <?= json_encode($controller::OPENCLOSE_OPEN) ?>);
+            $groups.toggleClass('d-none', this.value !== <?= json_encode($controller::OPENCLOSE_OPEN) ?>);
         })
         .trigger('change')
     ;

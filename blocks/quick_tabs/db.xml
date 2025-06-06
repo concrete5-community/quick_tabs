@@ -1,13 +1,25 @@
-<?xml version="1.0"?>
-<schema version="0.3">
-	<table name="btQuickTabs">
-		<field name="bID" type="I">
-			<key />
-			<unsigned />
-		</field>
-		<field name="openclose" type="X2"></field>
-		<field name="tabTitle" type="X2"></field>
-		<field name="semantic" type="X2"></field>
-		<field name="tabHandle" type="C2" size="255"></field>
-	</table>
+<?xml version="1.0" encoding="UTF-8"?>
+<schema
+    xmlns="http://www.concrete5.org/doctrine-xml/0.5"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.concrete5.org/doctrine-xml/0.5 https://concretecms.github.io/doctrine-xml/doctrine-xml-0.5.xsd"
+>
+    <table name="btQuickTabs">
+        <field name="bID" type="integer">
+            <unsigned />
+            <key />
+        </field>
+        <field name="openclose" type="text">
+            <notnull />
+        </field>
+        <field name="tabTitle" type="text">
+            <notnull />
+        </field>
+        <field name="semantic" type="text">
+            <notnull />
+        </field>
+        <field name="tabHandle" type="string" size="255">
+            <notnull />
+        </field>
+    </table>
 </schema>

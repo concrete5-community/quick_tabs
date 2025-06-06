@@ -1,30 +1,26 @@
-/* jshint unused:vars, undef:true, browser:true, jquery:true */
 (function() {
 'use strict';
 
-var WINDOW_WIDTH_STOP = 768;
+const WINDOW_WIDTH_STOP = 768;
 
-var LocationHash = (function() {
-    var CHUNK_SEPARATOR = '|';
-    var SUPPORTED = window.location && typeof window.location.hash === 'string';
-    function getCurrent() {
-        if (!SUPPORTED) {
-            return null;
-        }
-        var result = {
+const HEADER_TO_CONTENTS = new WeakMap();
+
+const LocationHash = (function() {
+    const CHUNK_SEPARATOR = '|';
+    function getCurrent()
+    {
+        const result = {
             others: null,
             tabs: [],
         };
-        var hash = window.decodeURIComponent(window.location.hash.replace(/^#/, '')).replace(/^#/, '');
-        $.each(hash.split(CHUNK_SEPARATOR), function (_, chunk) {
-            var match = chunk.match(/^qt(\d+):([^:#\|]+)$/);
+        const hash = window.decodeURIComponent(window.location.hash.replace(/^#/, '')).replace(/^#/, '');
+        hash.split(CHUNK_SEPARATOR).filter((chunk) => chunk !== '').forEach((chunk) => {
+            const match = chunk.match(/^qt(\d+):([^:#\|]+)$/);
             if (match === null) {
-                if (chunk !== '') {
-                    if (result.others === null) {
-                        result.others = chunk;
-                    } else {
-                        result.others += '|' + chunk;
-                    }
+                if (result.others === null) {
+                    result.others = chunk;
+                } else {
+                    result.others += '|' + chunk;
                 }
             } else {
                 result.tabs[parseInt(match[1], 10)] = window.decodeURIComponent(match[2]);
@@ -32,29 +28,32 @@ var LocationHash = (function() {
         });
         return result;
     }
-    function setCurrent(data) {
-        if (!SUPPORTED || !data) {
+    function setCurrent(data)
+    {
+        if (!data) {
             return;
         }
-        var chunks = [];
+        const chunks = [];
         if (typeof data.others === 'string') {
             chunks.push(data.others);
         }
-        $.each(data.tabs, function(index, value) {
-            chunks.push('qt' + index + ':' + window.encodeURIComponent(value));
-        });
-        var hash = chunks.join('|');
-        if (hash === '') {
+        if (Array.isArray(data.tabs)) {
+            data.tabs.forEach((value, index) => {
+                chunks.push('qt' + index + ':' + window.encodeURIComponent(value));
+            });
+        }
+        if (chunks.length === 0) {
             try {
                 window.history.replaceState(null, '', ' ');
             } catch (e) {
-                var x = window.document.body.scrollLeft,
-                    y = window.document.body.scrollTop;
+                const restoreX = window.document.body.scrollLeft;
+                const restoreY = window.document.body.scrollTop;
                 window.location.hash = '';
-                window.document.body.scrollLeft = x;
-                window.document.body.scrollTop = y;
+                window.document.body.scrollLeft = restoreX;
+                window.document.body.scrollTop = restoreY;
             }
         } else {
+            const hash = chunks.join('|');
             try {
                 window.history.replaceState(null, '', '#' + hash);
             } catch (e) {
@@ -63,15 +62,15 @@ var LocationHash = (function() {
         }
     }
     return {
-        get: function(quickTabsIndex, handleToTabIndexMap) {
-            var data = getCurrent();
+        get(quickTabsIndex, handleToTabIndexMap) {
+            const data = getCurrent();
             if (data === null || typeof data.tabs[quickTabsIndex] === undefined || !(data.tabs[quickTabsIndex] in handleToTabIndexMap)) {
                 return 0;
             }
             return handleToTabIndexMap[data.tabs[quickTabsIndex]];
         },
-        set: function(quickTabsIndex, headerHandle) {
-            var data = getCurrent();
+        set(quickTabsIndex, headerHandle) {
+            const data = getCurrent();
             if (data === null) {
                 return;
             }
@@ -81,124 +80,149 @@ var LocationHash = (function() {
     };
 })();
 
-function QuickTabs($container, index) {
-    var my = this,
-        $openTags = $container.find('>.simpleTabsOpen'),
-        $firstOpenTag = $openTags.first(),
-        wrapperOpen = ($firstOpenTag.data('wrapper-open') || '').toString(),
-        wrapperClose = ($firstOpenTag.data('wrapper-close') || '').toString()
-    ;
-    my.handleToTabIndexMap = {};
-    my.index = index;
-    my.$headersContainer = $('<ul class="simpleTabs clearfix" />');
-    my.$contentsContainer = $('<div class="simpleTabsContainer" />');
-    if (wrapperOpen === '' && wrapperClose === '') {
-        $firstOpenTag
-            .before(my.$headersContainer)
-            .before(my.$contentsContainer)
-        ;
-    } else {
-        var $wrapper = $(wrapperOpen + '<div class="simpleTabsTemporaryWrapper"></div>' + wrapperClose);
-        $firstOpenTag.before($wrapper);
-        $wrapper.find('.simpleTabsTemporaryWrapper')
-            .before(my.$headersContainer)
-            .before(my.$contentsContainer)
-            .remove()
-        ;
+/**
+ * @param {string} opener
+ * @param {string} closer
+ *
+ * @returns {HTMLElement}
+ */
+function buildTemporaryWrapper(opener, closer)
+{
+    const container = document.createElement('div');
+    container.innerHTML = opener + '<div class="simpleTabsTemporaryWrapper"></div>' + closer;
+    return container.children.length === 1 ? container.children[0] : container;
+}
+
+/**
+ * @constructor
+ * @param {HTMLElement} container
+ * @param {number} index
+ */
+function QuickTabs(container, index)
+{
+    if (container.dataset.quickTabsInitialized) {
+        throw new Error('QuickTabs already initialized for this container');
     }
-    $openTags.each(function(tabIndex) {
-        var $openTag = $(this),
-            title = $openTag.attr('data-tab-title'),
-            handle = $openTag.attr('data-tab-handle') || '',
-            $header = $('<li />'),
-            $contents = $('<div class="simpleTabsContent clearfix" />')
-        ;
-        $header
-            .data('quick_tabs.contents', $contents)
-            .append($('<a href="#" />')
-                .html(title)
-                .on('click', function(e) {
-                    e.preventDefault();
-                    my.showTab($header, true);
-                })
-            )
-        ;
-        my.$contentsContainer.append($contents);
-        my.$headersContainer.append($header);
-        if (handle !== '') {
-            my.handleToTabIndexMap[handle] = tabIndex;
-        } else {
-            my.handleToTabIndexMap[tabIndex.toString()] = tabIndex;
+    container.dataset.quickTabsInitialized = 'true';
+    const openTags = container.querySelectorAll(':scope >.simpleTabsOpen');
+    const firstOpenTag = openTags[0];
+    const wrapperOpen = firstOpenTag.dataset.wrapperOpen || '';
+    const wrapperClose = firstOpenTag.dataset.wrapperClose || '';
+    this.handleToTabIndexMap = {};
+    this.index = index;
+    this.headersContainer = document.createElement('ul');
+    this.headersContainer.className = 'simpleTabs clearfix';
+    this.contentsContainer = document.createElement('div');
+    this.contentsContainer.className = 'simpleTabsContainer';
+    if (wrapperOpen === '' && wrapperClose === '') {
+        container.insertBefore(headersContainer, firstOpenTag);
+        container.insertBefore(contentsContainer, firstOpenTag);
+    } else {
+        const wrapper = buildTemporaryWrapper(wrapperOpen, wrapperClose);
+        container.insertBefore(wrapper, firstOpenTag);
+        const temporaryWrapper = wrapper.querySelector(':scope .simpleTabsTemporaryWrapper');
+        temporaryWrapper.parentNode.insertBefore(this.headersContainer, temporaryWrapper);
+        temporaryWrapper.parentNode.insertBefore(this.contentsContainer, temporaryWrapper);
+        temporaryWrapper.parentNode.removeChild(temporaryWrapper);
+    }
+    openTags.forEach((openTag, tabIndex ) => {
+        const title = openTag.dataset.tabTitle || '';
+        const header = document.createElement('li');
+        const a = document.createElement('a');
+        a.href = '#';
+        a.textContent = title;
+        a.addEventListener('click', (e) => {
+            e.preventDefault();
+            this.showTab(header, true);
+        });
+        header.appendChild(a);
+        this.headersContainer.appendChild(header);
+        const contents = document.createElement('div');
+        contents.className = 'simpleTabsContent clearfix';
+        HEADER_TO_CONTENTS.set(header, contents);
+        this.contentsContainer.appendChild(contents);
+        const handle = openTag.dataset.tabHandle || tabIndex.toString();
+        this.handleToTabIndexMap[handle] = tabIndex;
+        const titleElement = document.createElement('h2');
+        titleElement.className = 'tab-title';
+        titleElement.textContent = title;
+        openTag.parentNode.insertBefore(titleElement, openTag.nextSibling);
+        let current = openTag.nextElementSibling;
+        while (current && !current.classList.contains('simpleTabsClose') && !current.classList.contains('simpleTabsOpen')) {
+            const next = current.nextElementSibling;
+            contents.appendChild(current);
+            current = next;
         }
-        $openTag.after($('<h2 class="tab-title" />').html(title));
-        $contents.append($openTag.nextUntil('.simpleTabsClose,.simpleTabsOpen'));
     });
-    $openTags.remove();
-    $container.find('>.simpleTabsClose').remove();
-    my.setTabFromLocationHash();
-    $(window).on('hashchange', function() {
-        my.setTabFromLocationHash();
-    });
-    
-        
-    
+    openTags.forEach((openTag) => openTag.parentNode.removeChild(openTag));
+    container.querySelectorAll(':scope >.simpleTabsClose').forEach((closeTag) => closeTag.parentNode.removeChild(closeTag));
+    this.setTabFromLocationHash();
+    window.addEventListener('hashchange', () => this.setTabFromLocationHash());
 }
 QuickTabs.prototype = {
-    setTabFromLocationHash: function() {
-        var headerIndex = LocationHash.get(this.index, this.handleToTabIndexMap),
-            selectedHeader = this.$headersContainer.find('>li')[headerIndex];
-        this.showTab(selectedHeader ? $(selectedHeader) : this.$headersContainer.find('>li:first-child'));
+    setTabFromLocationHash() {
+        const headerIndex = LocationHash.get(this.index, this.handleToTabIndexMap);
+        const selectedHeader = this.headersContainer.querySelectorAll(':scope >li')[headerIndex];
+        this.showTab(selectedHeader || this.headersContainer.querySelector(':scope >li:first-child'));
     },
-    showTab: function($header, saveHash) {
-        var $headers = this.$headersContainer.find('>li');
-        $headers.removeClass('active');
-        $header.addClass('active');
-        this.$contentsContainer.find('>.simpleTabsContent').hide();
-        $header.data('quick_tabs.contents').show();
+    showTab(header, saveHash) {
+        const headers = this.headersContainer.querySelectorAll(':scope >li');
+        headers.forEach((h) => h.classList.remove('active'));
+        header.classList.add('active');
+        this.contentsContainer.querySelectorAll(':scope >.simpleTabsContent').forEach((content) => content.style.display = 'none');
+        const contents = HEADER_TO_CONTENTS.get(header);
+        if (contents) {
+            contents.style.display = 'block';
+        }
         if (saveHash) {
-            var tabIndex = $headers.index($header),
-                tabHandle = tabIndex.toString();
-            $.each(this.handleToTabIndexMap, function(mappedHandle, mappedIndex) {
-                if (mappedIndex === tabIndex) {
-                    tabHandle = mappedHandle;
-                    return false;
-                }
-            });
+            const tabIndex = Array.from(headers).indexOf(header);
+            const tabHandle = Object.keys(this.handleToTabIndexMap).find((handle) => this.handleToTabIndexMap[handle] === tabIndex) || tabIndex.toString();
             LocationHash.set(this.index, tabHandle);
         }
     }
 };
 
-(function() {
-    var parsedContainers = [],
-        count = 0;
-    $('.simpleTabsOpen:not(.editmode)').each(function() {
-        var $container = $(this).parent();
-        if ($container.length === 0) {
-            return;
-        }
-        var container = $container[0];
-        if (parsedContainers.indexOf(container) < 0) {
-            new QuickTabs($container, count++);
-            parsedContainers.push(container);
-        }
-    });
-})();
-
-function windowSizeState(){
-    if($(window).width() < WINDOW_WIDTH_STOP) {
-        $('.simpleTabsContent').show();
-    }
-    else{
-        $('.simpleTabsContent').hide();
-        $('.simpleTabs li.active').each(function() {
-            $(this).data('quick_tabs.contents').show();
+function windowSizeState()
+{
+    const tabs = document.querySelectorAll('.simpleTabsContent');
+    if (window.innerWidth < WINDOW_WIDTH_STOP) {
+        tabs.forEach((tab) => tab.style.display = 'block');
+    } else {
+        tabs.forEach((tab) => tab.style.display = 'none');
+        document.querySelectorAll('.simpleTabs li.active').forEach((activeTab) => {
+            const contents = HEADER_TO_CONTENTS.get(activeTab);
+            if (contents) {
+                contents.style.display = 'block';
+            }
         });
     }
 }
-$(window).resize(function(){
+
+
+function ready()
+{
+    const parsedContainers = [];
+    let count = 0;
+    document.querySelectorAll('.simpleTabsOpen:not(.editmode)').forEach(function(openTag) {
+        const container = openTag.parentNode;
+        if (!container || parsedContainers.includes(container)) {
+            return;
+        }
+        try {
+            new QuickTabs(container, count++);
+        } catch (e) {
+            console.error('Error initializing QuickTabs:', e);
+        }
+        parsedContainers.push(container);
+    });
     windowSizeState();
-});
-windowSizeState();
+    window.addEventListener('resize', () => windowSizeState(), false);
+}
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', ready);
+} else {
+    ready();
+}
 
 })();
