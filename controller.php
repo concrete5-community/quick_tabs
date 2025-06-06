@@ -57,7 +57,7 @@ class Controller extends Package
      */
     public function upgrade()
     {
-        parent::install();
+        parent::upgrade();
         $this->installContentFile('config/install.xml');
     }
 }
