@@ -3,11 +3,12 @@
 namespace Concrete\Package\QuickTabs;
 
 use Concrete\Core\Database\Connection\Connection;
+use Concrete\Core\Database\EntityManager\Provider\ProviderInterface;
 use Concrete\Core\Package\Package;
 
 defined('C5_EXECUTE') or die('Access Denied.');
 
-class Controller extends Package
+class Controller extends Package implements ProviderInterface
 {
     protected $pkgHandle = 'quick_tabs';
 
@@ -73,5 +74,15 @@ class Controller extends Package
         }
         parent::upgrade();
         $this->installContentFile('config/install.xml');
+    }
+
+    /**
+     * {@inheritdoc}
+     *
+     * @see \Concrete\Core\Database\EntityManager\Provider\ProviderInterface::getDrivers()
+     */
+    public function getDrivers()
+    {
+        return [];
     }
 }
